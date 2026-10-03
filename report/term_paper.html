@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Learning-Augmented Page Replacement Under Workload Shifts - Term Paper</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 18mm 20mm 18mm;
+    }
+    body {
+      font-family: "Times New Roman", Times, Georgia, serif;
+      font-size: 11pt;
+      line-height: 1.45;
+      color: #111;
+      margin: 0;
+      padding: 20px;
+      background: #fdfdfd;
+    }
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px 40px;
+      border: 1px solid #e0e0e0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .container { border: none; box-shadow: none; padding: 0; max-width: 100%; }
+      .no-print { display: none; }
+      .page-break { page-break-before: always; }
+    }
+    h1 {
+      text-align: center;
+      font-size: 18pt;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 12pt;
+      font-style: italic;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .author-block {
+      text-align: center;
+      font-size: 10.5pt;
+      margin-bottom: 25px;
+      border-bottom: 1.5px solid #333;
+      padding-bottom: 14px;
+    }
+    h2 {
+      font-size: 13pt;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    h3 {
+      font-size: 11.5pt;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+    p {
+      text-align: justify;
+      margin: 6px 0;
+      text-indent: 1.2em;
+    }
+    p.no-indent {
+      text-indent: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 10pt;
+    }
+    th, td {
+      border-top: 1px solid #666;
+      border-bottom: 1px solid #666;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f7f7f7;
+      font-weight: bold;
+    }
+    .table-caption {
+      text-align: center;
+      font-size: 9.5pt;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .figure-container {
+      text-align: center;
+      margin: 16px 0;
+    }
+    .figure-container img {
+      max-width: 95%;
+      height: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .fig-caption {
+      font-size: 9.5pt;
+      font-style: italic;
+      color: #444;
+      margin-top: 5px;
+    }
+    ul {
+      margin: 6px 0 10px 20px;
+      padding: 0;
+      font-size: 10.5pt;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+    .references {
+      font-size: 9.5pt;
+      line-height: 1.35;
+    }
+    .references p {
+      text-indent: -1.5em;
+      margin-left: 1.5em;
+      margin-bottom: 6px;
+    }
+    .print-banner {
+      background: #e8f4fd;
+      border: 1px solid #b6d4fe;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 6px;
+      text-align: center;
+      font-family: sans-serif;
+      font-size: 11pt;
+    }
+    .print-btn {
+      background: #0d6efd;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="print-banner no-print">
+    <strong>PDF Export Ready:</strong> Click below or press <code>Cmd + P</code> (Print &rarr; Save as PDF) to generate your official 2–3 page submission copy.
+    <br><br>
+    <button class="print-btn" onclick="window.print()">Print to PDF</button>
+  </div>
+
+  <div class="container">
+    <h1>Learning-Augmented Page Replacement Under Workload Shifts</h1>
+    <div class="subtitle">CSE-307: Operating Systems — Term Paper (Track 1)</div>
+    <div class="author-block">
+      <strong style="font-size: 12pt;">Tanvir Ahmed Rafi</strong><br>
+      <strong>Student ID:</strong> 202414025 &nbsp;|&nbsp; <strong>Section:</strong> A &nbsp;|&nbsp; <strong>Batch:</strong> CSE-24<br>
+      Department of Computer Science & Engineering<br>
+      <div style="margin-top: 6px; font-size: 10pt;">
+        <strong>GitHub Repository:</strong> 
+        <a href="https://github.com/Tanvir-Ahmed-Rafi/cse307-learned-page-replacement" style="color: #0d6efd; text-decoration: underline;" target="_blank">
+          https://github.com/Tanvir-Ahmed-Rafi/cse307-learned-page-replacement
+        </a>
+      </div>
+      <span style="font-size: 9pt; color: #555;">Date: October 2026</span>
+    </div>
+
+    <h2>1. Problem Framing</h2>
+    <p>
+      In virtual memory architectures, physical RAM is subdivided into fixed-size frames managed by operating system replacement policies. When a process requests a virtual page absent from memory (a page fault), the OS must select an existing resident page for eviction. Classical heuristics such as First-In, First-Out (FIFO) and Least Recently Used (LRU) rely on static assumptions: FIFO assumes arrival order approximates utility, whereas LRU assumes recency reliably forecasts future demand [Silberschatz et al., 2018].
+    </p>
+    <p>
+      However, modern production software exhibits non-stationary workloads characterized by sharp phase transitions—such as initialization loops giving way to streaming scans or context-switching between localized routines and bursty memory accesses. While Belady’s Optimal algorithm provides an unreachable upper bound by evicting the page whose next reference occurs furthest in the future [Belady, 1966], offline future omniscience cannot be realized in real operating systems.
+    </p>
+    <p>
+      This paper studies a <em>learning-augmented page replacement policy</em>. Using a lightweight Decision Tree classifier trained on causal runtime features, we evaluate whether predictive models can outshine classical policies under local stability, and critically analyze what happens to both classical heuristics and the learned policy when the workload undergoes a severe distributional shift partway through execution.
+    </p>
+
+    <h2>2. Implementation Summary</h2>
+    <p class="no-indent">All replacement algorithms and simulation logic were designed and constructed from scratch in pure Python:</p>
+    <ul>
+      <li><strong>FIFO (First-In, First-Out):</strong> Maintains a strict queue of memory residency. On a fault under full occupancy, the page at the head of the queue (the oldest page brought into memory) is evicted.</li>
+      <li><strong>LRU (Least Recently Used):</strong> Tracks a timestamp log for every resident page. On eviction, the page whose last memory access timestamp is minimal is evicted, directly prioritizing temporal locality.</li>
+      <li><strong>Optimal (Belady’s):</strong> Precomputes a full backward pass over the access stream to generate future reference distances. On eviction, it selects the page whose subsequent access lies furthest in the future (or &infin; if unreferenced). Serves as the theoretical performance ceiling and ground-truth oracle.</li>
+      <li><strong>Learned / Adaptive Policy:</strong> A scikit-learn <code>DecisionTreeClassifier(max_depth=4, min_samples_leaf=5)</code> trained exclusively on Phase 1 access behavior. At each eviction juncture, the model evaluates candidate resident pages using three causal features computed strictly from past history:
+        <ul>
+          <li><em>recency:</em> Access steps elapsed since the candidate was last referenced.</li>
+          <li><em>frequency:</em> Cumulative access count of the page so far.</li>
+          <li><em>recency_ratio:</em> Relative recency normalized against elapsed trace steps.</li>
+        </ul>
+        The model outputs class probability scores via <code>predict_proba</code>, evicting the candidate with the highest predicted probability of matching Belady’s decision.
+      </li>
+    </ul>
+
+    <div class="page-break"></div>
+
+    <h2>3. Experimental Setup</h2>
+    <p>
+      A reproducible 1,000-reference synthetic workload trace was generated with a fixed random seed (<code>seed=42</code>) across a 25-page address space (pages 0–24). The trace implements a deliberate, sharp workload shift at access index 500:
+    </p>
+    <ul>
+      <li><strong>Phase 1 (Indices 0–499 — Locality-Heavy):</strong> Mimics initialization and structured computation. High temporal and spatial locality across a small hot working set of 6 pages (0–5), interleaved with sequential 4-page bursts and 10% background noise.</li>
+      <li><strong>Phase 2 (Indices 500–999 — Random / Bursty):</strong> Abrupt context-switch to uniform random accesses across the entire 25-page range, eliminating temporal and spatial predictability.</li>
+    </ul>
+    <p>
+      To prevent future data leakage, the machine learning model was trained strictly on samples collected from Phase 1 under 5 page frames (318 train / 107 test split). All policies were subsequently evaluated on the <em>identical</em> 1,000-page access sequence across 3, 4, 5, and 6 frames.
+    </p>
+
+    <div class="figure-container">
+      <img src="../results/figures/workload_trace.png" alt="Workload Trace and Working Set Size">
+      <div class="fig-caption">Figure 1: (Top) Page access trace showing the shift at index 500. (Bottom) 50-step sliding-window working-set size.</div>
+    </div>
+
+    <h2>4. Results and Analysis</h2>
+
+    <div class="table-caption">Table 1: Overall Experimental Results Across All 1,000 Accesses</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Algorithm</th>
+          <th>Frames</th>
+          <th>Total Hits</th>
+          <th>Total Faults</th>
+          <th>Hit Ratio</th>
+          <th>Fault Ratio</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>FIFO</td><td>3</td><td>193</td><td>807</td><td>0.1930</td><td>0.8070</td></tr>
+        <tr><td>FIFO</td><td>4</td><td>290</td><td>710</td><td>0.2900</td><td>0.7100</td></tr>
+        <tr><td>FIFO</td><td>5</td><td>401</td><td>599</td><td>0.4010</td><td>0.5990</td></tr>
+        <tr><td>FIFO</td><td>6</td><td>491</td><td>509</td><td>0.4910</td><td>0.5090</td></tr>
+        <tr><td>LRU</td><td>3</td><td>190</td><td>810</td><td>0.1900</td><td>0.8100</td></tr>
+        <tr><td>LRU</td><td>4</td><td>282</td><td>718</td><td>0.2820</td><td>0.7180</td></tr>
+        <tr><td>LRU</td><td>5</td><td>388</td><td>612</td><td>0.3880</td><td>0.6120</td></tr>
+        <tr><td>LRU</td><td>6</td><td>524</td><td>476</td><td>0.5240</td><td>0.4760</td></tr>
+        <tr><td>Optimal</td><td>3</td><td>421</td><td>579</td><td>0.4210</td><td>0.5790</td></tr>
+        <tr><td>Optimal</td><td>4</td><td>540</td><td>460</td><td>0.5400</td><td>0.4600</td></tr>
+        <tr><td>Optimal</td><td>5</td><td>632</td><td>368</td><td>0.6320</td><td>0.3680</td></tr>
+        <tr><td>Optimal</td><td>6</td><td>704</td><td>296</td><td>0.7040</td><td>0.2960</td></tr>
+        <tr><td><strong>Learned</strong></td><td>3</td><td>243</td><td>757</td><td>0.2430</td><td>0.7570</td></tr>
+        <tr><td><strong>Learned</strong></td><td>4</td><td>343</td><td>657</td><td><strong>0.3430</strong></td><td><strong>0.6570</strong></td></tr>
+        <tr><td><strong>Learned</strong></td><td>5</td><td>461</td><td>539</td><td><strong>0.4610</strong></td><td><strong>0.5390</strong></td></tr>
+        <tr><td><strong>Learned</strong></td><td>6</td><td>557</td><td>443</td><td><strong>0.5570</strong></td><td><strong>0.4430</strong></td></tr>
+      </tbody>
+    </table>
+
+    <div class="table-caption">Table 2: Performance Breakdown Before and After Workload Shift (Frames = 4)</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Algorithm</th>
+          <th>Phase 1 Hits (Locality)</th>
+          <th>Phase 1 Hit Ratio</th>
+          <th>Phase 2 Hits (Random)</th>
+          <th>Phase 2 Hit Ratio</th>
+          <th>Shift Drop (&Delta;)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>FIFO</td><td>216</td><td>0.4320</td><td>74</td><td>0.1480</td><td>-0.2840</td></tr>
+        <tr><td>LRU</td><td>206</td><td>0.4120</td><td>76</td><td>0.1520</td><td>-0.2600</td></tr>
+        <tr><td>Optimal</td><td>349</td><td>0.6980</td><td>191</td><td>0.3820</td><td>-0.3160</td></tr>
+        <tr><td><strong>Learned</strong></td><td><strong>273</strong></td><td><strong>0.5460</strong></td><td>70</td><td>0.1400</td><td><strong>-0.4060</strong></td></tr>
+      </tbody>
+    </table>
+
+    <div class="figure-container">
+      <img src="../results/figures/phase_comparison.png" alt="Phase Comparison Bar Chart">
+      <div class="fig-caption">Figure 2: Hit ratio comparison across Phase 1 and Phase 2 at Frames = 4.</div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2>5. Analysis of Workload Shift: What Changed and Why</h2>
+    <p>
+      The empirical results provide key insights into operating systems memory management and learning-augmented heuristics:
+    </p>
+    <p>
+      <strong>1. The Learned Policy Dominates in Phase 1:</strong> In Phase 1, the Learned Policy achieved a <strong>0.5460</strong> hit ratio, substantially outperforming both FIFO (0.4320) and LRU (0.4120). By learning non-linear boundary splits over both frequency and recency, the Decision Tree effectively distinguishes between stale background pages and recurring loop members, closing nearly half the gap between LRU and Optimal.
+    </p>
+    <p>
+      <strong>2. Distribution Shift Induces the Heaviest Degradation:</strong> As shown in Table 2, every policy suffered an efficiency collapse in Phase 2 because the active working-set size (25 pages) vastly exceeded the 4 available frames (theoretical random expectation &approx; 4/25 = 0.16). Crucially, the <strong>Learned Policy degraded the most</strong>, plunging by &minus;0.4060 in hit ratio. Because the tree was trained on Phase 1 correlations where high recency indicated obsolescence, it made systematically overconfident errors when access distributions randomized. LRU, being purely heuristic and stateless regarding global distribution, proved marginally more resilient (&minus;0.2600 drop).
+    </p>
+    <p>
+      <strong>3. Optimal's Persistence:</strong> Even in purely random workloads (Phase 2), Belady's Optimal sustained a 0.3820 hit ratio. This proves that even without locality, opportunistic lookahead identifies coincidental short-term re-references that blind heuristics cannot capture.
+    </p>
+
+    <h2>6. Conclusion and Future Directions</h2>
+    <p>
+      This term paper demonstrates that lightweight learned heuristics can tangibly improve operating systems memory performance when workload distributions remain consistent with training data. However, static learned models are vulnerable to workload shifts. Production deployment of learning-augmented OS kernels must incorporate online drift detection or hybrid fallbacks (e.g., reverting to LRU when prediction confidence decays) to remain robust against non-stationary system dynamics.
+    </p>
+
+    <h2>References</h2>
+    <div class="references">
+      <p>[Belady, 1966] Belady, L. A. (1966). A study of replacement algorithms for a virtual-storage computer. <em>IBM Systems Journal</em>, 5(2), 78–101.</p>
+      <p>[Pedregosa et al., 2011] Pedregosa, F., et al. (2011). Scikit-learn: Machine learning in Python. <em>Journal of Machine Learning Research</em>, 12, 2825–2830.</p>
+      <p>[Silberschatz et al., 2018] Silberschatz, A., Galvin, P. B., & Gagne, G. (2018). <em>Operating System Concepts</em> (10th ed.). John Wiley & Sons.</p>
+      <p>[Tanenbaum & Bos, 2015] Tanenbaum, A. S., & Bos, H. (2015). <em>Modern Operating Systems</em> (4th ed.). Pearson.</p>
+    </div>
+
+  </div>
+</body>
+</html>

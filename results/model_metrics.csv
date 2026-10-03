@@ -1,0 +1,7 @@
+metric,value
+n_train,318
+n_test,107
+accuracy,0.8691588785046729
+precision,1.0
+recall,0.3333333333333333
+f1,0.5

@@ -1,0 +1,7 @@
+metric,value
+total_evictions,653
+correct_count,218
+accuracy,0.333843797856049
+mean_confidence_when_correct,0.48762108554148953
+mean_confidence_when_incorrect,0.42437922166876124
+is_calibrated,True

@@ -1,0 +1,283 @@
+\documentclass[12pt,a4paper]{article}
+
+% ── Packages ─────────────────────────────────────────────────────────────────
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{parskip}
+\usepackage{caption}
+\usepackage{microtype}
+\usepackage[numbers]{natbib}
+\usepackage{setspace}
+\onehalfspacing
+
+\hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
+
+% ── Title ─────────────────────────────────────────────────────────────────────
+\title{%
+  \textbf{Learning-Augmented Page Replacement Under Workload Shifts}\\[6pt]
+  \large CSE-307: Operating Systems --- Term Paper (Track 1)
+}
+\author{%
+  \textbf{Tanvir Ahmed Rafi}\\
+  Student ID: 202414025 \quad\textbar\quad Section: A \quad\textbar\quad Batch: CSE-24\\
+  Department of Computer Science and Engineering\\[4pt]
+  \small\textbf{GitHub Repository:} \url{https://github.com/Tanvir-Ahmed-Rafi/cse307-learned-page-replacement}
+}
+\date{October 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Problem Framing}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Modern operating systems use \emph{page replacement} to decide which physical
+memory page to evict when a page fault occurs and all frames are full
+\cite{silberschatz2018}. Classical algorithms such as FIFO and LRU perform
+reasonably under stationary workloads but lack the ability to adapt when the
+access pattern changes abruptly. Real programs, however, routinely shift
+between phases: a startup phase that exhibits strong locality, followed by
+a streaming or scanning phase that accesses pages almost uniformly at random.
+
+This paper investigates whether a lightweight machine-learning policy---a
+Decision Tree classifier---can narrow the gap with Belady's Optimal algorithm
+\cite{belady1966} under such a two-phase workload shift. The central questions
+are: (1) how much does each algorithm degrade after the shift, and (2) does
+training on the locality phase help or hurt the learned policy during the
+random phase?
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Implementation Summary}
+% ─────────────────────────────────────────────────────────────────────────────
+
+All algorithms are implemented from scratch in Python 3.
+
+\paragraph{FIFO.} A queue records the insertion order of pages. On eviction,
+the page at the front of the queue (oldest arrival) is removed. FIFO is
+simple but ignores how recently a page has been used \cite{tanenbaum2015}.
+
+\paragraph{LRU.} Each page carries a timestamp of its most recent access.
+On eviction, the page with the smallest timestamp (least recently used) is
+removed. LRU exploits temporal locality: recently used pages are likely to be
+needed again soon \cite{silberschatz2018}.
+
+\paragraph{Optimal (Belady's).} On eviction, the page whose next use is
+farthest in the future is removed. If a page is never accessed again, it is
+evicted first. Because future access information is required, Optimal cannot
+be deployed in a real OS, but it provides a provable lower bound on page faults
+\cite{belady1966}. In this project Optimal also supplies ground-truth eviction
+labels for training the learned policy.
+
+\paragraph{Learned Policy.} A \texttt{DecisionTreeClassifier} (scikit-learn
+\cite{pedregosa2011}, \texttt{max\_depth=4}, \texttt{min\_samples\_leaf=5}) is
+trained to predict which page currently in memory is the best eviction
+candidate. Three causal features are computed from past accesses only:
+
+\begin{itemize}
+  \item \textbf{recency} --- steps elapsed since the page was last accessed;
+  \item \textbf{frequency} --- total number of accesses to the page so far;
+  \item \textbf{recency\_ratio} --- \(\text{recency} / (\text{step} + 1)\),
+        a normalised recency signal.
+\end{itemize}
+
+Future information is used exclusively to compute binary labels
+(1 = Optimal would evict this page, 0 = otherwise) during training.
+At inference time the model scores every candidate in memory and evicts the
+one with the highest predicted probability of being the optimal target.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Experimental Setup}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{Synthetic Trace}
+
+A reproducible two-phase trace of 1{,}000 page accesses was generated using
+\texttt{numpy.random.default\_rng(seed=42)}. Pages are integers in
+$[0, 24]$ (25 distinct pages).
+
+\begin{itemize}
+  \item \textbf{Phase 1 (indices 0--499):} A hot working set of six pages
+        (0--5) is accessed repeatedly. Approximately 40\% of accesses form
+        short sequential bursts of length four (e.g.\ pages 2$\to$3$\to$4$\to$5),
+        mimicking spatial locality. 10\% of accesses go to a background
+        page outside the hot set.
+  \item \textbf{Workload shift at index 500.}
+  \item \textbf{Phase 2 (indices 500--999):} Page numbers are drawn
+        uniformly at random from all 25 pages. No working-set discipline;
+        every page is equally probable.
+\end{itemize}
+
+\subsection{Model Training}
+
+Training samples were collected by replaying Phase~1 with 5~frames and
+recording features at every eviction point, labelled using Belady's
+next-use table. This yielded 425 samples (85 positive, 340 negative).
+The data was split 75/25 into training (318 samples) and evaluation
+(107 samples) sets using stratified sampling.
+
+\subsection{Evaluation Protocol}
+
+The same 1{,}000-access trace was used for all four algorithms.
+Frame counts of 3, 4, 5, and 6 were tested. Statistics were collected
+both for the full trace and separately for each phase.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Results}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection{Model Evaluation}
+
+Table~\ref{tab:model} shows the Decision Tree's performance on the held-out
+evaluation set. High precision (1.00) but low recall (0.33) indicates the
+model is conservative: when it predicts eviction it is always correct, but
+it misses two-thirds of the truly optimal evictions.
+
+\begin{table}[h]
+\centering
+\caption{Decision Tree evaluation metrics (held-out test set, $n=107$)}
+\label{tab:model}
+\begin{tabular}{lc}
+\toprule
+Metric & Value \\
+\midrule
+Accuracy  & 0.8692 \\
+Precision & 1.0000 \\
+Recall    & 0.3333 \\
+F1        & 0.5000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Overall Page Fault Comparison}
+
+Table~\ref{tab:overall} reports total page faults across all 1{,}000 accesses
+for each algorithm and frame count. Optimal consistently achieves the fewest
+faults. The Learned policy sits between Optimal and FIFO/LRU for all frame
+counts, demonstrating that ML guidance provides a measurable benefit even with
+simple features.
+
+\begin{table}[h]
+\centering
+\caption{Total page faults (1{,}000 accesses)}
+\label{tab:overall}
+\begin{tabular}{lcccc}
+\toprule
+Algorithm & Frames = 3 & Frames = 4 & Frames = 5 & Frames = 6 \\
+\midrule
+FIFO    & 807 & 710 & 599 & 509 \\
+LRU     & 810 & 718 & 612 & 476 \\
+Optimal & 579 & 460 & 368 & 296 \\
+Learned & 757 & 657 & 539 & 443 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Hit Ratios by Phase (Frames = 4)}
+
+Table~\ref{tab:phase} shows hit ratios split across the two phases for
+$\text{frames}=4$ (the representative case). Every algorithm degrades
+substantially after the workload shift.
+
+\begin{table}[h]
+\centering
+\caption{Hit ratio before and after workload shift (frames = 4)}
+\label{tab:phase}
+\begin{tabular}{lccc}
+\toprule
+Algorithm & Phase 1 & Phase 2 & Drop \\
+\midrule
+FIFO    & 0.432 & 0.148 & $-$0.284 \\
+LRU     & 0.412 & 0.152 & $-$0.260 \\
+Optimal & 0.698 & 0.382 & $-$0.316 \\
+Learned & 0.546 & 0.140 & $-$0.406 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Analysis of Workload Shift}
+% ─────────────────────────────────────────────────────────────────────────────
+
+All algorithms experience a dramatic drop in hit ratio after the shift.
+Several observations are noteworthy.
+
+\textbf{Why does performance drop?} In Phase~2 accesses are spread uniformly
+across 25 pages while only 4 frames are available, giving a theoretical maximum
+hit ratio of $4/25 = 0.16$. No algorithm can maintain the high hit ratios seen
+in Phase~1 because the working-set size now exceeds the frame count.
+
+\textbf{Why does Optimal retain the highest hit ratio in both phases?}
+Optimal always evicts the page that will not be needed for the longest time.
+Even in a random trace this is better than any heuristic, because any page
+that happens to recur quickly is kept in memory.
+
+\textbf{Why does the Learned policy degrade the most (drop of 0.406)?}
+The Decision Tree was trained exclusively on Phase-1 data, so it learned that
+pages with high recency (stale pages in the locality-heavy hot set) should be
+evicted. In Phase~2 there is no stable hot set; the features the model relies
+on no longer carry the same predictive signal. The model therefore makes
+suboptimal evictions, performing slightly worse than LRU ($-0.406$ vs.\
+$-0.260$) in Phase~2. This illustrates \emph{distribution shift} in an OS
+context: a policy trained on one phase can hurt performance in a different phase.
+
+\textbf{Interesting FIFO vs.\ LRU reversal.} At frames = 3, 4, 5 FIFO has
+fewer faults than LRU; at frames = 6 LRU outperforms FIFO. This kind of
+frame-count sensitivity is consistent with the Belady anomaly and the known
+fragility of FIFO under varying frame counts \cite{tanenbaum2015}.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Conclusion}
+% ─────────────────────────────────────────────────────────────────────────────
+
+This project shows that a lightweight Decision Tree, trained on Belady's
+optimal labels with three causal features, can outperform both FIFO and LRU
+during the training phase (Phase~1 hit ratio: 0.546 vs.\ 0.432 for FIFO) but
+suffers from distribution shift during the unseen random phase (Phase~2 hit
+ratio: 0.140, slightly below LRU at 0.152). The gap between the Learned policy
+and Optimal remains large (0.546 vs.\ 0.698 in Phase~1), primarily because the
+model's low recall (0.33) means it misses two-thirds of the truly best evictions.
+
+Future directions include online model updates (retrain on a sliding window),
+richer features (page-fault rate, inter-access time distribution), and
+evaluation on multi-phase real-world memory traces. Despite its limitations,
+this experiment demonstrates that even a very simple ML model can add
+measurable value over classical heuristics when trained on representative data.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section*{References}
+% ─────────────────────────────────────────────────────────────────────────────
+\begingroup
+\renewcommand{\section}[2]{}%  suppress duplicate heading
+\bibliographystyle{plainnat}
+
+\begin{thebibliography}{9}
+
+\bibitem{silberschatz2018}
+Silberschatz, A., Galvin, P.~B., and Gagne, G.\ (2018).
+\newblock \emph{Operating System Concepts}, 10th ed.
+\newblock Wiley.
+
+\bibitem{belady1966}
+Belady, L.~A.\ (1966).
+\newblock A study of replacement algorithms for a virtual-storage computer.
+\newblock \emph{IBM Systems Journal}, 5(2):78--101.
+
+\bibitem{tanenbaum2015}
+Tanenbaum, A.~S., and Bos, H.\ (2015).
+\newblock \emph{Modern Operating Systems}, 4th ed.
+\newblock Pearson.
+
+\bibitem{pedregosa2011}
+Pedregosa, F., et al.\ (2011).
+\newblock Scikit-learn: Machine learning in Python.
+\newblock \emph{Journal of Machine Learning Research}, 12:2825--2830.
+
+\end{thebibliography}
+\endgroup
+
+\end{document}
